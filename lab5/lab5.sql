@@ -1,4 +1,4 @@
-/* Task № 1 */
+/* Task 1 */
 /* Create a view that allows you to get a list of readers with 
 the number of books each reader has on hand, but displays only those 
 readers for whom there are debts, ie. the reader has at least one book 
@@ -6,10 +6,10 @@ on hand that he should have returned before the current date. */
 
 CREATE VIEW [readers_indebtedness] AS
 SELECT [s_name],
-	   COUNT(CASE 
-			 WHEN [sb_is_active] = 'Y' THEN [sb_book] 
-			 ELSE NULL 
-			 END) AS [books_indebtedness]
+       COUNT(CASE 
+		WHEN [sb_is_active] = 'Y' THEN [sb_book] 
+		ELSE NULL 
+		END) AS [books_indebtedness]
 FROM [subscribers]
 LEFT OUTER JOIN [subscriptions]
 ON [s_id] = [sb_subscriber]
@@ -22,7 +22,7 @@ HAVING COUNT(CASE
 SELECT * FROM [readers_indebtedness] 
 
 
-/* Task № 5 */
+/* Task 5 */
 /* Create a view that returns all information from the subscriptions table, 
 converting the dates from the sb_start and sb_finish fields to the format 
 "YYYY-MM-DD NN", where "NN" is the day of the week as its full name. */
@@ -30,28 +30,26 @@ converting the dates from the sb_start and sb_finish fields to the format
 CREATE VIEW [subscriptions_datename]
 WITH SCHEMABINDING
 AS
-	SELECT [sb_id],
-		[sb_subscriber],
-		[sb_book],
-		CONCAT([sb_start], ' ', DATENAME(dw, [sb_start])) AS [sb_start],
-		CONCAT([sb_start], ' ', DATENAME(dw, [sb_finish])) AS [sb_finish],
-		[sb_is_active]
-	FROM [dbo].[subscriptions]
+SELECT [sb_id],
+       [sb_subscriber],
+       [sb_book],
+       CONCAT([sb_start], ' ', DATENAME(dw, [sb_start])) AS [sb_start],
+       CONCAT([sb_start], ' ', DATENAME(dw, [sb_finish])) AS [sb_finish],
+       [sb_is_active]
+FROM [dbo].[subscriptions]
 
 SELECT * FROM [subscriptions_datename]
 
 
-/* Task № 12 */
+/* Task 12 */
 /* Modify the database schema so that the table "subscribers" stores 
 information about how many times the reader has taken books from the 
 library (this counter must be incremented every time the reader is given a 
 book; decreasing the value of this counter is not provided). */
 
--- Модификация таблицы:
 ALTER TABLE [subscribers] 
 ADD [s_books] INT NOT NULL DEFAULT 0;
 
--- Инициализация данных:
 UPDATE [subscribers]
 SET [s_books] = [s_hand_books]
 FROM [subscribers]
@@ -61,7 +59,6 @@ JOIN (SELECT [sb_subscriber],
 	  GROUP BY [sb_subscriber]) AS [prepared_data]
 ON [s_id] = [sb_subscriber];
 
--- Реакция на добавление выдачи книги:
 CREATE TRIGGER [s_add_books_on_subscriptions]
 ON [subscriptions]
 AFTER INSERT
@@ -70,13 +67,12 @@ AS
 	SET [s_books] = [s_books] + [s_new_books]
 	FROM [subscribers]
 	JOIN (SELECT [sb_subscriber],
-				 COUNT([sb_id]) AS [s_new_books]
-		  FROM [inserted]
-		  GROUP BY [sb_subscriber]) AS [prepared_data]
+		     COUNT([sb_id]) AS [s_new_books]
+	      FROM [inserted]
+	      GROUP BY [sb_subscriber]) AS [prepared_data]
 	ON [s_id] = [sb_subscriber];
 GO
 
--- Реакция на обновление выдачи книги:
 CREATE TRIGGER [s_upd_books_on_subscriptions]
 ON [subscriptions]
 AFTER UPDATE
@@ -85,15 +81,15 @@ AS
 	SET [s_books] = [s_books] + [s_new_books]
 	FROM [subscribers]
 	JOIN (SELECT [sb_subscriber],
-				 COUNT([sb_id]) AS [s_new_books]
-		  FROM [inserted]
-		  GROUP BY [sb_subscriber]) AS [prepared_data]
+		     COUNT([sb_id]) AS [s_new_books]
+	      FROM [inserted]
+	      GROUP BY [sb_subscriber]) AS [prepared_data]
 	ON [s_id] = [sb_subscriber];
 GO
 
 
 
-/* Task № 13 */
+/* Task 13 */
 /* Create a trigger that does not allow adding information about the issue of a 
 book to the database if at least one of the following conditions is met:
 • date of issue or return falls on Sunday;
@@ -105,11 +101,9 @@ CREATE TRIGGER [subscriptions_control]
 ON [subscriptions]
 AFTER INSERT, UPDATE
 AS
-	-- Переменные для хранения списка "плохих записей" и сообщения об ошибке.
 	DECLARE @bad_records NVARCHAR(max);
 	DECLARE @msg NVARCHAR(max);
 
-	-- Блокировка выдач книг с днем выдачи или возврата воскресенья.
 	SELECT @bad_records = STUFF((SELECT ', ' + CAST([sb_id] AS NVARCHAR) +
 			' (start: ' + CAST([sb_start] AS NVARCHAR) + ', finish: ' +
 			CAST([sb_finish] AS NVARCHAR) + ')'
@@ -128,7 +122,6 @@ AS
 		RETURN 
 	END;
 
-	-- Блокировка выдач книг, где читатель брал более 100 книг за последние полгода.
 	SELECT @bad_records = STUFF((SELECT ', ' + [list]
 	FROM (SELECT CONCAT('(id=', [s_id], ', ',
 				 [s_name], ', books=',
@@ -153,7 +146,6 @@ AS
 		RETURN;
 	END;
 
-	-- Блокировка выдач книг c промежутком времени между датами выдачи и возврата менее трёх дней.
 	SELECT @bad_records = STUFF((SELECT ', ' + CAST([sb_id] AS NVARCHAR) +
 			' (start: ' + CAST([sb_start] AS NVARCHAR) + ', finish: ' +
 			CAST([sb_finish] AS NVARCHAR) + ')'
@@ -175,13 +167,12 @@ AS
 
 
 
-/* Task № 17 */
+/* Task 17 */
 /* Create a trigger, change the date of the current 
 books, if specified in the IN-SERT- or UPDATE-query the date 
 of the current books to change the current period and more. */
 
--- Необходимо отключить каскадное обновление FK для таблицы subdcriptions
-
+-- Off cascade update FK for table subdcriptions
 CREATE TRIGGER [subscriptions_date_correct_insert]
 ON [subscriptions]
 INSTEAD OF INSERT
@@ -218,15 +209,15 @@ SELECT ( CASE
 		(SELECT 1)) - 1
 		ELSE [sb_id]
 		END ) AS [sb_id],
-				 [sb_subscriber],
-				 [sb_book],
-				( CASE
-					WHEN (DATEDIFF(mm, [sb_start], GETDATE()) >= 6)
-					THEN GETDATE()
-					ELSE [sb_start]
-					END ) AS [sb_start],
-				[sb_finish],
-				[sb_is_active]
+			 [sb_subscriber],
+			 [sb_book],
+			 ( CASE
+				WHEN (DATEDIFF(mm, [sb_start], GETDATE()) >= 6)
+				THEN GETDATE()
+				ELSE [sb_start]
+				END ) AS [sb_start],
+					 [sb_finish],
+					 [sb_is_active]
 				FROM [inserted];
 
 SET IDENTITY_INSERT [subscriptions] OFF;
